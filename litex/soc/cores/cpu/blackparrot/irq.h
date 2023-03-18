@@ -31,17 +31,17 @@ static inline void irq_setie(unsigned int ie)
 
 static inline unsigned int irq_getmask(void)
 {
-	return 0; /* FIXME */
+	return *((unsigned int *)PLIC_ENABLED) >> 1; /* FIXME */
 }
 
 static inline void irq_setmask(unsigned int mask)
 {
-	/* FIXME */
+	*((unsigned int *)PLIC_ENABLED) = mask << 1; /* FIXME */
 }
 
 static inline unsigned int irq_pending(void)
 {
-	return csr_readl(PLIC_PENDING) >> 1; /* FIXME */
+	return *((unsigned int *)PLIC_PENDING) >> 1; /* FIXME */
 }
 
 #ifdef __cplusplus
