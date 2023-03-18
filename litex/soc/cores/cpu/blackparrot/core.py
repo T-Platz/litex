@@ -29,16 +29,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import sys
 from shutil import copyfile
-
 from migen import *
 
-from litex.gen import *
-
 from litex import get_data_mod
-from litex.soc.interconnect import axi
 from litex.soc.interconnect import wishbone
+from litex.soc.integration.soc import SoCRegion
 from litex.soc.cores.cpu import CPU, CPU_GCC_TRIPLE_RISCV64
 
 # Variants -----------------------------------------------------------------------------------------
@@ -52,10 +48,9 @@ GCC_FLAGS = {
     "sim":      "-march=rv64imafd -mabi=lp64d ",
 }
 
-# BlackParrot --------------------------------------------------------------------------------------
+# BlackParrotRV64 ----------------------------------------------------------------------------------
 
 class BlackParrot(CPU):
-    category             = "softcore"
     family               = "riscv"
     name                 = "blackparrot"
     human_name           = "BlackParrotRV64[imafd]"
@@ -65,13 +60,17 @@ class BlackParrot(CPU):
     gcc_triple           = CPU_GCC_TRIPLE_RISCV64
     linker_output_format = "elf64-littleriscv"
     nop                  = "nop"
-    io_regions           = {0x5000_0000: 0x1000_0000} # Origin, Length.
+    io_regions           = {
+        0x5000_0000: 0x1000_0000,
+        0x0030_0000: 0x0010_0001
+    } # Origin, Length.
 
     # Memory Mapping.
     @property
     def mem_map(self):
         # Keep the lower 128MBs for SoC IOs auto-allocation.
         return {
+            "clint"    : 0x0030_0000,
             "csr"      : 0x5800_0000,
             "rom"      : 0x7000_0000,
             "sram"     : 0x7100_0000,
@@ -91,8 +90,9 @@ class BlackParrot(CPU):
         self.platform     = platform
         self.variant      = variant
         self.reset        = Signal()
-        self.idbus        = idbus = wishbone.Interface(data_width=64, adr_width=37)
-        self.periph_buses = [idbus]
+        self.ibus         = ibus = wishbone.Interface(data_width=64, adr_width=37, bursting=True)
+        self.dbus         = dbus = wishbone.Interface(data_width=64, adr_width=37, bursting=True)
+        self.periph_buses = [ibus, dbus]
         self.memory_buses = []
 
         self.cpu_params = dict(
@@ -100,19 +100,31 @@ class BlackParrot(CPU):
             i_clk_i   = ClockSignal("sys"),
             i_reset_i = ResetSignal("sys") | self.reset,
 
-            # Wishbone (I/D).
-            i_wbm_dat_i  = idbus.dat_r,
-            o_wbm_dat_o  = idbus.dat_w,
-            i_wbm_ack_i  = idbus.ack,
-            i_wbm_err_i  = idbus.err,
-            i_wbm_rty_i  = Open(),
-            o_wbm_adr_o  = idbus.adr,
-            o_wbm_stb_o  = idbus.stb,
-            o_wbm_cyc_o  = idbus.cyc,
-            o_wbm_sel_o  = idbus.sel,
-            o_wbm_we_o   = idbus.we,
-            o_wbm_cti_o  = idbus.cti,
-            o_wbm_bte_o  = idbus.bte,
+            # Wishbone (I).
+            o_m00_adr_o = ibus.adr,
+            o_m00_dat_o = ibus.dat_w,
+            o_m00_cyc_o = ibus.cyc,
+            o_m00_stb_o = ibus.stb,
+            o_m00_sel_o = ibus.sel,
+            o_m00_we_o  = ibus.we,
+            o_m00_cti_o = ibus.cti,
+            o_m00_bte_o = ibus.bte,
+            i_m00_ack_i = ibus.ack,
+            i_m00_err_i = ibus.err,
+            i_m00_dat_i = ibus.dat_r,
+
+            # Wishbone (D).
+            o_m01_adr_o = dbus.adr,
+            o_m01_dat_o = dbus.dat_w,
+            o_m01_cyc_o = dbus.cyc,
+            o_m01_stb_o = dbus.stb,
+            o_m01_sel_o = dbus.sel,
+            o_m01_we_o  = dbus.we,
+            o_m01_cti_o = dbus.cti,
+            o_m01_bte_o = dbus.bte,
+            i_m01_ack_i = dbus.ack,
+            i_m01_err_i = dbus.err,
+            i_m01_dat_i = dbus.dat_r,
         )
 
         # Copy config loader to /tmp
@@ -141,8 +153,9 @@ class BlackParrot(CPU):
 
 
     def set_reset_address(self, reset_address):
+        assert not hasattr(self, "reset_address")
         self.reset_address = reset_address
-        assert reset_address == 0x7000_0000, "cpu_reset_addr hardcoded to 7x00000000!"
+        assert reset_address == 0x7000_0000, "cpu_reset_addr hardcoded to 0x7000_0000!"
 
     @staticmethod
     def add_sources(platform, variant="standard"):
@@ -166,6 +179,23 @@ class BlackParrot(CPU):
                     platform.add_source(vdir, "systemverilog")
                 elif (temp[0] == '/'):
                     assert("No support for absolute path for now")
+
+    def add_soc_components(self, soc):
+        self.clintbus = clintbus = wishbone.Interface()
+        self.cpu_params.update(
+            i_c00_adr_i = clintbus.adr,
+            i_c00_dat_i = clintbus.dat_w,
+            i_c00_cyc_i = clintbus.cyc,
+            i_c00_stb_i = clintbus.stb,
+            i_c00_sel_i = clintbus.sel,
+            i_c00_we_i  = clintbus.we,
+            i_c00_cti_i = clintbus.cti,
+            i_c00_bte_i = clintbus.bte,
+            o_c00_ack_o = clintbus.ack,
+            o_c00_err_o = clintbus.err,
+            o_c00_dat_o = clintbus.dat_r,
+        )
+        soc.bus.add_slave("clint", clintbus, region=SoCRegion(origin=soc.mem_map.get("clint"), size=0x1_0000, cached=False))
 
     def do_finalize(self):
         assert hasattr(self, "reset_address")
