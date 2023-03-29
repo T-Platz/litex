@@ -62,9 +62,9 @@ class BlackParrot(CPU):
     nop                  = "nop"
     io_regions           = {
         #0x0010_0000: 0x0002_000,
-        #0x5800_0000: 0x1800_0000,
+        0x5800_0000: 0x1800_0000,
         #0x8000_0000: 0x8000_0000,
-        0x5000_0000: 0x1000_0000
+        #0x5000_0000: 0x1000_0000
     } # Origin, Length.
 
     # Memory Mapping.
@@ -72,9 +72,8 @@ class BlackParrot(CPU):
     def mem_map(self):
         # Keep the lower 128MBs for SoC IOs auto-allocation.
         return {
-            #"clint"    : 0x0030_0000,
+            "clint"    : 0x0030_0000,
             "csr"      : 0x5800_0000,
-            #"rom"      : 0x0000_0000,
             "rom"      : 0x7000_0000,
             "sram"     : 0x7100_0000,
             "main_ram" : 0x8000_0000,
@@ -185,21 +184,21 @@ class BlackParrot(CPU):
 
     def add_soc_components(self, soc):
         pass
-        # self.clintbus = clintbus = wishbone.Interface()
-        # self.cpu_params.update(
-        #     i_c00_adr_i = clintbus.adr,
-        #     i_c00_dat_i = clintbus.dat_w,
-        #     i_c00_cyc_i = clintbus.cyc,
-        #     i_c00_stb_i = clintbus.stb,
-        #     i_c00_sel_i = clintbus.sel,
-        #     i_c00_we_i  = clintbus.we,
-        #     i_c00_cti_i = clintbus.cti,
-        #     i_c00_bte_i = clintbus.bte,
-        #     o_c00_ack_o = clintbus.ack,
-        #     o_c00_err_o = clintbus.err,
-        #     o_c00_dat_o = clintbus.dat_r,
-        # )
-        # soc.bus.add_slave("clint", clintbus, region=SoCRegion(origin=soc.mem_map.get("clint"), size=0x1_0000, cached=True, linker=True))
+        self.clintbus = clintbus = wishbone.Interface()
+        self.cpu_params.update(
+            i_c00_adr_i = clintbus.adr,
+            i_c00_dat_i = clintbus.dat_w,
+            i_c00_cyc_i = clintbus.cyc,
+            i_c00_stb_i = clintbus.stb,
+            i_c00_sel_i = clintbus.sel,
+            i_c00_we_i  = clintbus.we,
+            i_c00_cti_i = clintbus.cti,
+            i_c00_bte_i = clintbus.bte,
+            o_c00_ack_o = clintbus.ack,
+            o_c00_err_o = clintbus.err,
+            o_c00_dat_o = clintbus.dat_r,
+        )
+        soc.bus.add_slave("clint", clintbus, region=SoCRegion(origin=soc.mem_map.get("clint"), size=0x1_0000, cached=True, linker=True))
 
     def do_finalize(self):
         assert hasattr(self, "reset_address")
