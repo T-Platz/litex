@@ -61,10 +61,7 @@ class BlackParrot(CPU):
     linker_output_format = "elf64-littleriscv"
     nop                  = "nop"
     io_regions           = {
-        #0x0010_0000: 0x0002_000,
-        0x5800_0000: 0x1800_0000,
-        #0x8000_0000: 0x8000_0000,
-        #0x5000_0000: 0x1000_0000
+        0x5800_0000: 0x1800_0000
     } # Origin, Length.
 
     # Memory Mapping.
