@@ -89,8 +89,8 @@ class BlackParrot(CPU):
         self.platform     = platform
         self.variant      = variant
         self.reset        = Signal()
-        self.ibus         = ibus = wishbone.Interface(data_width=64, adr_width=37, bursting=False)
-        self.dbus         = dbus = wishbone.Interface(data_width=64, adr_width=37, bursting=False)
+        self.ibus         = ibus = wishbone.Interface(data_width=64, adr_width=37, bursting=True)
+        self.dbus         = dbus = wishbone.Interface(data_width=64, adr_width=37, bursting=True)
         self.periph_buses = [ibus, dbus]
         self.memory_buses = []
 
@@ -180,8 +180,7 @@ class BlackParrot(CPU):
                     assert("No support for absolute path for now")
 
     def add_soc_components(self, soc):
-        pass
-        self.clintbus = clintbus = wishbone.Interface()
+        self.clintbus = clintbus = wishbone.Interface(data_width=64, adr_width=37, bursting=False)
         self.cpu_params.update(
             i_c00_adr_i = clintbus.adr,
             i_c00_dat_i = clintbus.dat_w,
