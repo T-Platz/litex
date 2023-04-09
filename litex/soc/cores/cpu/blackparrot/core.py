@@ -61,19 +61,18 @@ class BlackParrot(CPU):
     linker_output_format = "elf64-littleriscv"
     nop                  = "nop"
     io_regions           = {
-        0x5800_0000: 0x1800_0000
+        0x0000_0000: 0x8000_0000
     } # Origin, Length.
 
     # Memory Mapping.
     @property
     def mem_map(self):
-        # Keep the lower 128MBs for SoC IOs auto-allocation.
         return {
             "clint"    : 0x0030_0000,
             "csr"      : 0x5800_0000,
-            "rom"      : 0x7000_0000,
-            "sram"     : 0x7100_0000,
-            "main_ram" : 0x8000_0000,
+            "rom"      : 0x8000_0000,
+            "sram"     : 0x8100_0000,
+            "main_ram" : 0x9000_0000,
         }
 
     # GCC Flags.
@@ -95,11 +94,11 @@ class BlackParrot(CPU):
         self.memory_buses = []
 
         self.cpu_params = dict(
-            # Clk / Rst.
+            # Clk / Rst
             i_clk_i   = ClockSignal("sys"),
             i_reset_i = ResetSignal("sys") | self.reset,
 
-            # Wishbone (I).
+            # Wishbone ibus
             o_m00_adr_o = ibus.adr,
             o_m00_dat_o = ibus.dat_w,
             o_m00_cyc_o = ibus.cyc,
@@ -112,7 +111,7 @@ class BlackParrot(CPU):
             i_m00_err_i = ibus.err,
             i_m00_dat_i = ibus.dat_r,
 
-            # Wishbone (D).
+            # Wishbone dbus
             o_m01_adr_o = dbus.adr,
             o_m01_dat_o = dbus.dat_w,
             o_m01_cyc_o = dbus.cyc,
@@ -154,7 +153,7 @@ class BlackParrot(CPU):
     def set_reset_address(self, reset_address):
         assert not hasattr(self, "reset_address")
         self.reset_address = reset_address
-        assert reset_address == 0x7000_0000, "cpu_reset_addr hardcoded to 0x7000_0000!"
+        assert reset_address == 0x8000_0000, "cpu_reset_addr hardcoded to 0x8000_0000!"
 
     @staticmethod
     def add_sources(platform, variant="standard"):
@@ -194,7 +193,7 @@ class BlackParrot(CPU):
             o_c00_err_o = clintbus.err,
             o_c00_dat_o = clintbus.dat_r,
         )
-        soc.bus.add_slave("clint", clintbus, region=SoCRegion(origin=soc.mem_map.get("clint"), size=0x1_0000, cached=True, linker=True))
+        soc.bus.add_slave("clint", clintbus, region=SoCRegion(origin=soc.mem_map.get("clint"), size=0x1_0000, cached=False))
 
     def do_finalize(self):
         assert hasattr(self, "reset_address")
