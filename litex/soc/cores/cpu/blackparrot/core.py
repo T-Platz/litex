@@ -61,7 +61,7 @@ class BlackParrot(CPU):
     linker_output_format = "elf64-littleriscv"
     nop                  = "nop"
     io_regions           = {
-        0x0000_0000: 0x8000_0000
+        0x0000_0000: 0x7000_0000
     } # Origin, Length.
 
     # Memory Mapping.
@@ -70,9 +70,9 @@ class BlackParrot(CPU):
         return {
             "clint"    : 0x0030_0000,
             "csr"      : 0x5800_0000,
-            "rom"      : 0x8000_0000,
-            "sram"     : 0x8100_0000,
-            "main_ram" : 0x9000_0000,
+            "rom"      : 0x7000_0000,
+            "sram"     : 0x7100_0000,
+            "main_ram" : 0x8000_0000,
         }
 
     # GCC Flags.
@@ -153,7 +153,7 @@ class BlackParrot(CPU):
     def set_reset_address(self, reset_address):
         assert not hasattr(self, "reset_address")
         self.reset_address = reset_address
-        assert reset_address == 0x8000_0000, "cpu_reset_addr hardcoded to 0x8000_0000!"
+        assert reset_address == 0x7000_0000, "cpu_reset_addr hardcoded to 0x7000_0000!"
 
     @staticmethod
     def add_sources(platform, variant="standard"):
